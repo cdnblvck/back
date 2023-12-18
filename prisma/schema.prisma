@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  email            String        @unique
+  name             String
+  surname          String
+  status           UserStatus
+  password         String
+  createdAt        DateTime      @default(now()) @map(name: "created_at")
+  updatedAt        DateTime      @updatedAt @map(name: "updated_at")
+  certified        Boolean?
+  phone            String?
+  location         String?
+  bookmarks        String[]
+  token            Token?
+  transactions     Transaction[]
+  user_permissions Permission[]
+  property         Property[]
+}
+
+model Property {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  street           String
+  longitude        String
+  latitude         String
+  location         Json
+  country          String
+  description      String
+  price            Int
+  slug             String            @unique
+  bedrooms         Int
+  bathrooms        Int
+  squareFootage    Int
+  squareLive       String?
+  caution          Int?
+  piece            Int?
+  buildYear        String?
+  periodicity      String?
+  typeProperty     PropertyTypeValue @default(APPARTEMENT)
+  categoryProperty PropertyCategory  @default(LOCATION)
+  status           PropertyStatus    @default(AVAILABLE)
+  listing_date     DateTime          @default(now())
+  images           String[]
+  amenities        String[]
+  company          Company?          @relation(fields: [companyId], references: [id])
+  companyId        String?           @db.ObjectId
+  Transaction      Transaction?      @relation(fields: [transactionId], references: [transaction_id])
+  transactionId    String?           @db.ObjectId
+  User             User?             @relation(fields: [userId], references: [id])
+  userId           String?           @db.ObjectId
+
+  @@index(fields: [location], name: "2dsphere")
+}
+
+model Company {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  certified  Boolean
+  location   String
+  website    String?
+  instagram  String?
+  facebook   String?
+  bio        String
+  type       String
+  phone      String[]
+  email      String
+  property   Property[]
+  created_at DateTime   @default(now())
+  updated_at DateTime   @default(now())
+  Agent      Agent[]
+}
+
+model Agent {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  certified    Boolean
+  location     String
+  website      String?
+  instagram    String?
+  facebook     String?
+  bio          String
+  phone        String[]
+  email        String
+  company      Company       @relation(fields: [companyId], references: [id])
+  companyId    String        @db.ObjectId
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @default(now())
+  transactions Transaction[]
+}
+
+model Transaction {
+  transaction_id   String     @id @default(auto()) @map("_id") @db.ObjectId
+  transaction_date DateTime
+  sale_price       BigInt
+  userId           String     @db.ObjectId
+  agentId          String     @db.ObjectId
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @default(now())
+  propertyId       Property[]
+  agent_id         Agent      @relation(fields: [agentId], references: [id])
+  seller_id        User       @relation(fields: [userId], references: [id])
+}
+
+model Token {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @unique @db.ObjectId
+  token     String
+  expiredAt DateTime @default(now()) @map(name: "expired_at")
+  createdAt DateTime @default(now()) @map(name: "created_at")
+  updatedAt DateTime @updatedAt @map(name: "updated_at")
+}
+
+model Bookmark {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  businessId   String   @db.ObjectId
+  user         String   @db.ObjectId
+  businessType String
+  createdAt    DateTime @default(now()) @map(name: "created_at")
+  updatedAt    DateTime @updatedAt @map(name: "updated_at")
+}
+
+model Booster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  businessId String   @db.ObjectId
+  startDate  DateTime @default(now())
+  endDate    DateTime @db.Date
+  boost      Int
+  createdAt  DateTime @default(now()) @map(name: "created_at")
+  updatedAt  DateTime @updatedAt @map(name: "updated_at")
+}
+
+enum PropertyStatus {
+  SOLD
+  AVAILABLE
+  PAUSED
+}
+
+enum PropertyCategory {
+  VENTE
+  LOCATION
+  PROJET
+  INVEST
+}
+
+enum PropertyTypeValue {
+  APPARTEMENT
+  MAISON
+  COMMERCE
+  BUREAU
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Role {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  name        String       @unique
+  permissions Permission[]
+}
+
+enum Permission {
+  CAN_ACCESS_AS_USER
+  CAN_USE_EXPERT_MODE
+  CAN_RUN_OPTIMIZATION
+  ADMIN_CAN_UPDATE_PERMISSIONS
+  ADMIN_CAN_CRUD_SHARED_PORTFOLIOS
+  ADMIN_CAN_ADMINISTRATE_PPTX
+  ADMIN_CAN_ADMINISTRATE_UI
+  ADMIN_CAN_IMPORT_DATA
+  ADMIN_CAN_ADMINISTRATE_CAPSULES
+}
