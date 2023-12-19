@@ -21,6 +21,7 @@ import JwtRefreshGuard from './guards/jwt-refresh.guard';
 import {jwtConstants} from './constants';
 import {RegisterUserDto} from './dto/register-user.dto';
 import {User} from "@prisma/client";
+import {AuthForgotPasswordDto} from "./dto/auth-forgot-password.dto";
 
 @Controller({
     path: 'auth',
@@ -42,8 +43,6 @@ export class AuthController {
         );
         const {cookie: refreshTokenCookie, token: refreshToken} =
             this.authService.getCookieWithJwtRefreshToken(user.id);
-
-        // await this.userService.setRefreshToken(refreshToken, user.id);
 
         req.res.setHeader('Set-Cookie', [accessTokenCookie, refreshTokenCookie]);
         req.res.cookie('access_token', accessTokenCookie, {
@@ -120,5 +119,12 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     getProfile(@Request() req): Promise<Partial<User>> {
         return req.user;
+    }
+    @Post('forgot/password')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    async forgotPassword(
+        @Body() forgotPasswordDto: AuthForgotPasswordDto,
+    ): Promise<void> {
+        return this.authService.forgotPassword(forgotPasswordDto.email);
     }
 }

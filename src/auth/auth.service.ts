@@ -6,12 +6,17 @@ import {jwtConstants} from './constants';
 import {PrismaService} from '../prisma.service';
 import {RegisterUserDto} from './dto/register-user.dto';
 import {User, UserStatus} from '@prisma/client'
+import {MailService} from "../mail/mail.service";
+import {ConfigService} from "@nestjs/config";
+import {AllConfigType} from "../config/config.type";
 
 @Injectable()
 export class AuthService {
     constructor(
         private usersService: UsersService,
         private jwtService: JwtService,
+        private mailService: MailService,
+        private configService: ConfigService<AllConfigType>,
         private prisma: PrismaService,
     ) {
     }
@@ -121,5 +126,35 @@ export class AuthService {
         });
 
         return {accessToken, refreshToken};
+    }
+
+    public async forgotPassword(email: string) {
+        const user = this.usersService.findUser(email)
+        if (!user) {
+            throw new HttpException(
+                {
+                    status: HttpStatus.UNPROCESSABLE_ENTITY,
+                    errors: {
+                        email: 'emailNotExists',
+                    },
+                },
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+        const hash = await this.jwtService.signAsync(
+            {
+                forgotUserId: user,
+            },
+            {
+                secret: jwtConstants.ACCESS_TOKEN_ALGORITHM,
+                expiresIn: jwtConstants.ACCESS_TOKEN_EXPIRES_IN,
+            },
+        );
+        await this.mailService.forgotPassword({
+            to: email,
+            data: {
+                hash,
+            },
+        });
     }
 }
