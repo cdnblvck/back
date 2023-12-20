@@ -9,6 +9,7 @@ import {User, UserStatus} from '@prisma/client'
 import {MailService} from "../mail/mail.service";
 import {ConfigService} from "@nestjs/config";
 import {AllConfigType} from "../config/config.type";
+import {SessionService} from "../session/session.service";
 
 @Injectable()
 export class AuthService {
@@ -16,6 +17,7 @@ export class AuthService {
         private usersService: UsersService,
         private jwtService: JwtService,
         private mailService: MailService,
+        private sessionService: SessionService,
         private configService: ConfigService<AllConfigType>,
         private prisma: PrismaService,
     ) {
@@ -156,5 +158,109 @@ export class AuthService {
                 hash,
             },
         });
+    }
+
+    async resetPassword(hash: string, password: string): Promise<void> {
+        let userId: User['id'];
+
+        try {
+            const jwtData = await this.jwtService.verifyAsync<{
+                forgotUserId: User['id'];
+            }>(hash, {
+                secret: this.configService.getOrThrow('auth.forgotSecret', {
+                    infer: true,
+                }),
+            });
+
+            userId = jwtData.forgotUserId;
+        } catch {
+            throw new HttpException(
+                {
+                    status: HttpStatus.UNPROCESSABLE_ENTITY,
+                    errors: {
+                        hash: `invalidHash`,
+                    },
+                },
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        const user = await this.usersService.findUserById(userId);
+
+        if (!user) {
+            throw new HttpException(
+                {
+                    status: HttpStatus.UNPROCESSABLE_ENTITY,
+                    errors: {
+                        hash: `notFound`,
+                    },
+                },
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        user.password = password;
+    }
+
+    async validateLogin(loginDto: any): Promise<any> {
+        const user = await this.usersService.findUser(loginDto.email);
+
+        if (!user) {
+            throw new HttpException(
+                {
+                    status: HttpStatus.UNPROCESSABLE_ENTITY,
+                    errors: {
+                        email: 'notFound',
+                    },
+                },
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        if (user.provider !== AuthProvidersEnum.email) {
+            throw new HttpException(
+                {
+                    status: HttpStatus.UNPROCESSABLE_ENTITY,
+                    errors: {
+                        email: `needLoginViaProvider:${user.provider}`,
+                    },
+                },
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        const isValidPassword = await bcrypt.compare(
+            loginDto.password,
+            user.password,
+        );
+
+        if (!isValidPassword) {
+            throw new HttpException(
+                {
+                    status: HttpStatus.UNPROCESSABLE_ENTITY,
+                    errors: {
+                        password: 'incorrectPassword',
+                    },
+                },
+                HttpStatus.UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        const session = await this.sessionService.create({
+            user,
+        });
+
+        const {token, refreshToken, tokenExpires} = await this.getTokensData({
+            id: user.id,
+            role: user.role,
+            sessionId: session.id,
+        });
+
+        return {
+            refreshToken,
+            token,
+            tokenExpires,
+            user,
+        };
     }
 }

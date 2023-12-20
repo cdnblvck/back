@@ -24,6 +24,7 @@ model User {
   transactions     Transaction[]
   user_permissions Permission[]
   property         Property[]
+  Session          Session[]
 }
 
 model Property {
@@ -118,6 +119,17 @@ model Token {
   expiredAt DateTime @default(now()) @map(name: "expired_at")
   createdAt DateTime @default(now()) @map(name: "created_at")
   updatedAt DateTime @updatedAt @map(name: "updated_at")
+}
+
+model Session {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.ObjectId
+  expiredAt DateTime @default(now()) @map(name: "expired_at")
+  createdAt DateTime @default(now()) @map(name: "created_at")
+  updatedAt DateTime @updatedAt @map(name: "updated_at")
+
+  @@index(fields: [userId], name: "user_id_session")
 }
 
 model Bookmark {

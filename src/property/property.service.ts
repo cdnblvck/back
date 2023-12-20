@@ -2,6 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { UpdateRentalDto } from './dto/update-rental.dto';
 import { PrismaService } from '../prisma.service';
 import { Property } from '@prisma/client';
+import {CreatePropertyDto} from "./dto/create-property.dto";
 @Injectable()
 export class PropertyService {
   constructor(private prisma: PrismaService) {}
@@ -26,7 +27,7 @@ export class PropertyService {
     });
   }
 
-  findNearListing(coordinates: any) {
+  findNearsProperty(coordinates: any) {
     try {
       return this.prisma.property.findRaw({
         filter: {
